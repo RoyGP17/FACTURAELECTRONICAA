@@ -1,0 +1,24 @@
+﻿@page "/"
+@using FACTURAELECTRONICAA.Models
+@using Microsoft.EntityFrameworkCore
+@inject BdFacturaContext _context
+@inject NavigationManager navigationManager
+
+<!-- Encabezado de la Factura -->
+<div style="border: 1px solid black; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h3 style="margin: 0;">NOTICIERO CONTABLE</h3>
+        <h4 style="margin: 0;">NOTICIERO DEL CONTADOR S.A.C.</h4>
+        <p style="margin: 0;">
+            CAL. MARTIR OLAYA 129 DPTO. 1107 ALT CDRA. 01 DE AV. PARDO<br />
+            AYACUCHO - CANGALLO - CANGALLO
+        </p>
+    </div>
+    <div style="border: 1px solid black; padding: 10px;">
+        <h4 style="margin: 0;">FACTURA ELECTRONICA</h4>
+        <p style="margin: 0;">
+            RUC: <br />
+            E001-1213
+        </p>
+    </div>
+</div>

@@ -1,0 +1,155 @@
+﻿@rendermode InteractiveServer
+@page "/facturasdetalleform/{Id:int?}"
+@using FACTURAELECTRONICAA.Models
+@using Microsoft.EntityFrameworkCore
+@inject BdFacturaContext _context
+@inject NavigationManager navigationManager
+
+<h3>@(Id.HasValue ? "Editar Detalle de Factura" : "Nuevo Detalle de Factura")</h3>
+
+<EditForm Model="detalleFactura" OnValidSubmit="GuardarDetalleFactura">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Producto:</label>
+        <InputSelect @bind-Value="detalleFactura.ProductoVentaId" @oninput="ObtenerPrecioProducto" class="form-control">
+            <option value="">Selecciona un Producto</option>
+            @foreach (var producto in productos)
+            {
+                <option value="@producto.ProductoVentaId">@producto.Nombre</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Cantidad:</label>
+        <InputNumber @bind-Value="detalleFactura.CantidaProducto" class="form-control" @oninput="ActualizarSubtotal" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Subtotal Ventas:</label>
+        <InputNumber @bind-Value="detalleFactura.SubTotalVentas" class="form-control" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Anticipos:</label>
+        <InputNumber @bind-Value="detalleFactura.Anticipos" class="form-control" @oninput="CalcularValorVenta" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Descuentos:</label>
+        <InputNumber @bind-Value="detalleFactura.Descuentos" class="form-control" @oninput="CalcularValorVenta" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Valor Venta:</label>
+        <InputNumber @bind-Value="detalleFactura.ValorVenta" class="form-control" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">IGV:</label>
+        <InputNumber @bind-Value="detalleFactura.Igv" class="form-control" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Total:</label>
+        <InputNumber @bind-Value="detalleFactura.Total" class="form-control" disabled />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+</EditForm>
+
+@code {
+    private FacturaDetalle detalleFactura = new FacturaDetalle();
+    private List<FacturaCabecera> facturas = new();
+    private List<ProductoVentum> productos = new();
+
+    [Parameter] public int? Id { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "idfactura")]
+    public int idfactura { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        detalleFactura.FacturaId = idfactura;
+        facturas = await _context.FacturaCabeceras.ToListAsync();
+        productos = await _context.ProductoVenta.ToListAsync();
+
+        if (Id.HasValue)
+        {
+            detalleFactura = await _context.FacturaDetalles.FindAsync(Id.Value);
+        }
+    }
+
+    private void ObtenerPrecioProducto(ChangeEventArgs evt)
+    {
+        if (int.TryParse(evt.Value.ToString(), out int productoId))
+        {
+            var producto = productos.FirstOrDefault(x => x.ProductoVentaId == productoId);
+            if (producto != null)
+            {
+                detalleFactura.SubTotalVentas = producto.Precio * (detalleFactura.CantidaProducto > 0 ? detalleFactura.CantidaProducto : 1);
+                CalcularValorVenta();
+            }
+        }
+    }
+
+    private void ActualizarSubtotal(ChangeEventArgs evt)
+    {
+        if (int.TryParse(evt.Value.ToString(), out int cantidadIngresada))
+        {
+            var producto = productos.FirstOrDefault(x => x.ProductoVentaId == detalleFactura.ProductoVentaId);
+            if (producto != null)
+            {
+                detalleFactura.SubTotalVentas = producto.Precio * cantidadIngresada;
+
+                detalleFactura.ValorVenta = detalleFactura.SubTotalVentas - detalleFactura.Anticipos - detalleFactura.Descuentos;
+
+                if (detalleFactura.ValorVenta < 0)
+                {
+                    detalleFactura.ValorVenta = 0;
+                }
+
+                detalleFactura.Igv = Math.Round(detalleFactura.ValorVenta * 0.18m, 2); // Redondeamos a 2 decimales
+
+                detalleFactura.Total = detalleFactura.ValorVenta + detalleFactura.Igv;
+            }
+        }
+    }
+
+    private void CalcularValorVenta()
+    {
+        detalleFactura.ValorVenta = detalleFactura.SubTotalVentas - (detalleFactura.Anticipos + detalleFactura.Descuentos);
+
+        
+    }
+
+    async Task GuardarDetalleFactura()
+    {
+        try
+        {
+            if (Id.HasValue)
+            {
+                _context.FacturaDetalles.Update(detalleFactura);
+            }
+            else
+            {
+                _context.FacturaDetalles.Add(detalleFactura);
+            }
+            await _context.SaveChangesAsync();
+            navigationManager.NavigateTo("/facturasdetalle");
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    void Cancelar()
+    {
+        navigationManager.NavigateTo("/facturasdetalle");
+    }
+}

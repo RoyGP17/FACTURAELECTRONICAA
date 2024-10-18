@@ -1,0 +1,124 @@
+﻿@rendermode InteractiveServer
+@page "/facturasdetalle"
+@using FACTURAELECTRONICAA.Models
+@using Microsoft.EntityFrameworkCore
+@inject BdFacturaContext _context
+@inject NavigationManager navigationManager
+
+<div style="border: 1px solid black; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h3 style="margin: 0;">NOTICIERO CONTABLE</h3>
+        <h4 style="margin: 0;">NOTICIERO DEL CONTADOR S.A.C.</h4>
+        <p style="margin: 0;">
+            CAL. MARTIR OLAYA 129 DPTO. 1107 ALT CDRA. 01 DE AV. PARDO<br />
+            AYACUCHO - CANGALLO - CANGALLO
+        </p>
+    </div>
+    <div style="border: 1px solid black; padding: 10px;">
+        <h4 style="margin: 0;">FACTURA ELECTRONICA</h4>
+        <p style="margin: 0;">
+            RUC: 20556106909<br />
+            E001-1213
+        </p>
+    </div>
+</div>
+
+<h3>Lista de Detalles de Factura</h3>
+
+<button class="btn btn-primary" @onclick="() => NuevoDetalleFactura(idfactura)">Nuevo Detalle</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Factura ID</th>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Subtotal Ventas</th>
+            <th>Anticipos</th>
+            <th>Descuentos</th>
+            <th>Valor Venta</th>
+            <th>IGV</th>
+            <th>Total</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var detalle in detallesFactura)
+        {
+            <tr>
+                <td>@detalle.FacturaId</td>
+                <td>@detalle.ProductoVenta.Nombre</td>
+                <td>@detalle.CantidaProducto</td>
+                <td>@detalle.SubTotalVentas</td>
+                <td>@detalle.Anticipos</td>
+                <td>@detalle.Descuentos</td>
+                <td>@detalle.ValorVenta</td>
+                <td>@detalle.Igv</td>
+                <td>@detalle.Total</td>
+                <td>
+                    <button class="btn btn-warning" @onclick="() => EditarDetalle(detalle.DetalleId)">Editar</button>
+                    <button class="btn btn-danger" @onclick="() => EliminarDetalle(detalle.DetalleId)">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Nueva sección debajo de la lista para mostrar los totales -->
+<h4>Total General</h4>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Subtotal Ventas</th>
+            <th>Anticipos</th>
+            <th>Descuentos</th>
+            <th>Valor Venta</th>
+            <th>IGV</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>@detallesFactura.Sum(d => d.SubTotalVentas)</td>
+            <td>@detallesFactura.Sum(d => d.Anticipos)</td>
+            <td>@detallesFactura.Sum(d => d.Descuentos)</td>
+            <td>@detallesFactura.Sum(d => d.ValorVenta)</td>
+            <td>@detallesFactura.Sum(d => d.Igv)</td>
+            <td>@detallesFactura.Sum(d => d.Total)</td>
+        </tr>
+    </tbody>
+</table>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "idfactura")]
+    public int idfactura { get; set; }
+
+    private List<FacturaDetalle> detallesFactura = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        detallesFactura = await _context.FacturaDetalles.Include(d => d.ProductoVenta).ToListAsync();
+    }
+
+    void NuevoDetalleFactura(int idfactura)
+    {
+        navigationManager.NavigateTo($"/facturasdetalleform?idfactura={idfactura}");
+    }
+
+    void EditarDetalle(int id)
+    {
+        navigationManager.NavigateTo($"/facturasdetalleform/{id}");
+    }
+
+    async Task EliminarDetalle(int id)
+    {
+        var detalle = await _context.FacturaDetalles.FindAsync(id);
+        if (detalle != null)
+        {
+            _context.FacturaDetalles.Remove(detalle);
+            await _context.SaveChangesAsync();
+            detallesFactura = await _context.FacturaDetalles.Include(d => d.ProductoVenta).ToListAsync();
+        }
+    }
+}
